@@ -1,4 +1,4 @@
-angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$timeout', '$q', 'makeEventEmitter', ($window, $rootScope, $timeout, $q, makeEventEmitter) ->
+angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$timeout', '$q', 'makeEventEmitter', 'angularBurn', ($window, $rootScope, $timeout, $q, makeEventEmitter, angularBurn) ->
 	tasks = makeEventEmitter {}
 
 	taskDeferred = $q.defer()
@@ -8,9 +8,9 @@ angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$ti
 	tasks.authenticationState = 'unknown'
 	tasks.lastAuthenticationError = {}
 
-	firebaseReference = new Firebase "https://trellotasks.firebaseio.com/users"
+	firebaseClient = angularBurn.client "https://trellotasks.firebaseio.com/users"
 
-	authClient = new FirebaseAuthClient firebaseReference, (error, user) ->
+	authClient = firebaseClient.authClient (error, user) ->
 		if user
 			tasks.user = user
 			tasks.authenticationState = 'authenticated'
@@ -23,22 +23,23 @@ angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$ti
 			angular.copy error, tasks.lastAuthenticationError
 			tasks.trigger 'unauthenticated', error
 
-	taskReferenceWatcher = null
-	trelloAccountWatcher = null
+	tasksClient = null
+	trelloAccountClient = null
+
 	tasks.on 'authenticated', () ->
-		if not taskReferenceWatcher
-			taskReference = firebaseReference.child "#{tasks.user.id}/tasks"
-			taskReferenceWatcher = watchReference taskReference, taskDeferred, $rootScope
+		if not tasksClient
+			tasksClient = firebaseClient.child "#{tasks.user.id}/tasks", []
+			taskDeferred.resolve tasksClient
 
-			trelloAccount = firebaseReference.child "#{tasks.user.id}/trelloAccount"
-			trelloAccountWatcher = watchReference trelloAccount, trelloAccountDeferred, $rootScope, {}
+			trelloAccountClient = firebaseClient.child "#{tasks.user.id}/trelloAccount", {}
+			trelloAccountDeferred.resolve trelloAccountClient
 
-		taskReferenceWatcher.watch()
-		trelloAccountWatcher.watch()
+		tasksClient.watch()
+		trelloAccountClient.watch()
 
-	tasks.on 'unauthenticated', (error) ->
-		taskReferenceWatcher?.stopWatching()
-		trelloAccountWatcher?.stopWatching()
+	tasks.on 'unauthenticated', () ->
+		tasksClient?.stopWatching()
+		trelloAccountClient?.stopWatching()
 
 	tasks.getTaskCards = () -> taskDeferred.promise
 	tasks.getTrelloToken = () ->
@@ -50,7 +51,9 @@ angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$ti
 			trelloAccount.apiToken = token
 
 	tasks.logout = () ->
-		taskReferenceWatcher.stopWatching()
+		tasksClient?.stopWatching()
+		trelloAccountClient?.stopWatching()
+
 		authClient.logout()
 	tasks.login = (credentials) ->
 		authClient.login 'password',
@@ -82,6 +85,7 @@ angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope
 	updateAuthState = () ->
 		trelloTasks.user = Tasks.user
 
+
 		if Tasks.authenticationState == 'unknown'
 			trelloTasks.authenticationState = 'unknown'
 		else if Tasks.authenticationState != 'authenticated'
@@ -96,7 +100,7 @@ angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope
 				trelloTasks.authenticationState = 'needTrello'
 		else
 			trelloTasks.authenticationState = 'authenticated'
-	
+
 	Trello.on 'unauthenticated', updateAuthState
 	Tasks.on 'unauthenticated', updateAuthState
 
@@ -159,41 +163,3 @@ angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope
 
 	return trelloTasks
 ]
-
-watchReference = (firebaseReference, deferred, $rootScope, initialValue = []) ->
-	watching = false
-
-	value = null
-	initial = true
-	lastValue = null
-
-	updateFromSnapshot = (snapshot) ->
-		if not value
-			value = initialValue
-			deferred.resolve value
-		if snapshot.val()
-			angular.copy snapshot.val(), value
-		lastValue = angular.copy value
-
-	firebaseReference.on 'value', (snapshot) ->
-		if $rootScope.$$phase == '$apply' or $rootScope.$$phase == '$digest'
-			updateFromSnapshot snapshot
-		else
-			$rootScope.$apply () ->	updateFromSnapshot snapshot
-
-	$rootScope.$watch () ->
-		if initial
-			initial = false
-			return
-
-		return if not watching
-
-		val = JSON.parse angular.toJson(value)
-
-		if not angular.equals(lastValue, val)
-			firebaseReference.set val
-
-	return {
-		watch: () -> watching = true
-		stopWatching: () -> watching = false
-	}
