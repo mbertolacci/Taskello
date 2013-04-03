@@ -1,0 +1,142 @@
+@import "compass_twitter_bootstrap";
+
+
+$base-card-width: 200px;
+$base-card-spacing: 5px;
+
+$total-width: 940px;
+
+$organization-padding: 4px;
+$list-padding: 5px;
+$list-border: 1px;
+
+$all-cards-columns: 2;
+$all-cards-width: 2 * ($list-padding + $organization-padding + $list-border) + $all-cards-columns * ($base-card-width + $base-card-spacing);
+
+$tasks-right-margin: 20px;
+$tasks-width: $total-width - $tasks-right-margin - $all-cards-width;
+
+.app {
+	* {
+		-webkit-box-sizing: border-box;
+		-moz-box-sizing: border-box;
+		box-sizing: border-box;  
+	}
+}
+
+.header {
+	position: relative;
+	.signout {
+		position: absolute;
+		right: 0;
+		top: 0;
+	}
+}
+
+.tasks {
+	background: #eeeeff;
+	width: $tasks-width;
+	margin-right: $tasks-right-margin;
+}
+
+.all-cards {
+
+	background: #f7f7f7;
+	width: $all-cards-width;
+
+	&.burning-card {
+		background: #f2f2f2;	
+	}
+
+	.card {
+		width: $base-card-width;
+		float: left;
+		margin-bottom: $base-card-spacing;
+		margin-right: $base-card-spacing;
+	}
+	[ng-click] {
+		cursor: pointer;
+	}
+
+	.collapsed-message {
+		font-size: 13px;
+
+		margin-bottom: 5px;
+		padding: 3px 5px;
+		display: inline-block;
+
+		border: 1px solid #dedede;
+		-webkit-border-radius: 2px;
+	}
+	.cards {
+		@include clearfix;
+	}
+}
+
+.app {
+	.organization {
+		padding: $organization-padding;
+		h4, .board {
+			border-bottom: 1px solid #e5e5e5;
+			padding-bottom: 5px;
+		}
+		margin-bottom: 5px;
+	}
+
+	.section {
+		position: relative;
+		float: left;
+
+		border: $list-border solid #eeeeee;
+		border-radius: 4px;
+		padding: $list-padding;
+		margin-bottom: 40px;
+
+		.scrollable {
+			overflow: auto;
+			padding-bottom: 40px;
+		}
+
+		.card {
+			position: relative;
+			cursor: pointer;
+
+			background-color: white;
+
+			margin-bottom: 5px;
+
+			border: 1px solid #dedede;
+			-webkit-border-radius: 2px;
+			padding: 5px;
+			padding-bottom: 17px;
+			min-height: 45px;
+
+			overflow: hidden;
+
+			&.ui-sortable-helper {
+				-webkit-box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+				-webkit-transform: rotate(5deg);
+			}
+
+			.board-and-list {
+				font-size: 11px;
+				position: absolute;
+				right: 4px;
+				bottom: 4px;
+			}
+		}
+	}
+}
+
+.task-cards {
+	.card {
+		border: 2px solid #dedede;
+		min-height: 60px;
+	}
+}
+
+.card-placeholder {
+	height: 40px;
+	background: #e0e0e0;
+	margin-bottom: 5px;
+}
