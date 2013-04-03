@@ -1,0 +1,1 @@
+"use strict";angular.module("TrelloTasksApp",["ui.bootstrap"]).config(["$routeProvider",function(e){e.when("/",{templateUrl:"views/main.html",controller:"MainCtrl"}).otherwise({redirectTo:"/"})}]);

@@ -1,0 +1,106 @@
+<div class="header">
+	<h1>Taskello</h1>
+
+	<div class="signout" ng-show="trelloTasks.authenticationState != 'unknown' && trelloTasks.authenticationState != 'unauthenticated'">
+		Signed in as {{trelloTasks.user.email}}
+
+		<button class="btn btn-primary" ng-click="trelloTasks.signOut()">Sign out</button>
+	</div>
+</div>
+
+<div ng-switch="trelloTasks.authenticationState" ng-hide="trelloTasks.authenticationState == 'authenticated'">
+	<div ng-switch-when="unknown">
+		Starting...
+	</div>
+	<div ng-switch-when="unauthenticated" ng-switch-when="authenticating">
+		<h3>Sign in or register to get started</h3>
+		<div class="alert alert-error" ng-show="trelloTasks.lastAuthenticationError.code" ng-switch="trelloTasks.lastAuthenticationError.code">
+			<div ng-switch-when="EMAIL_TAKEN">
+				Email is already associated with an account. Please login.
+			</div>
+			<div ng-switch-when="INVALID_PASSWORD">
+				Incorrect email or password. Please try again.
+			</div>
+			<div ng-switch-default="">
+				Error signing in. Please try again.
+			</div>
+		</div>
+		<form name="loginForm" class="form-horizontal" ng-submit="trelloTasks.signIn(email, password)">
+			<div class="control-group">
+				<label class="control-label" for="inputEmail">Email</label>
+				<div class="controls">
+					<input type="email" id="inputEmail" placeholder="Email" ng-model="email" required="">
+				</div>
+			</div>
+			<div class="control-group">
+				<label class="control-label" for="inputPassword">Password</label>
+				<div class="controls">
+					<input type="password" id="inputPassword" placeholder="Password" ng-model="password" required="">
+				</div>
+			</div>
+			<div class="control-group">
+				<div class="controls">
+					<button type="button" class="btn" ng-disabled="loginForm.$invalid || trelloTasks.creatingUser" ng-click="trelloTasks.createUser(email, password); $event.preventDefault()">
+						<span ng-show="trelloTasks.creatingUser">Registering...</span>
+						<span ng-hide="trelloTasks.creatingUser">Register</span>
+					</button>
+					<button type="submit" class="btn btn-primary" ng-disabled="loginForm.$invalid || trelloTasks.authenticating">
+						<span ng-show="trelloTasks.authenticating">Signing in...</span>
+						<span ng-hide="trelloTasks.authenticating">Sign in</span>
+					</button>
+				</div>
+			</div>
+		</form>
+	</div>
+	<div ng-switch-when="needTrello">
+		<h3>Success! You've signed in, now you just need to connect your Trello account.</h3>
+		<p>
+			Note: if you had previously connected a Trello account, this means the session has expired and you need to connect it again.
+		</p>
+		<button class="btn btn-primary" ng-click="trelloTasks.connectTrello()">Connect Trello Account</button>
+	</div>
+</div>
+
+<div class="app" ng-show="trelloTasks.authenticationState == 'authenticated'">
+	<div class="tasks section">
+		<h2>Tasks</h2>
+		<div class="task-cards cards scrollable" sortable="{placeholder: 'card-placeholder', connectWith: '.all-cards' }" ng-model="trelloTasks.taskCards">
+			<div class="card" ng-repeat="card in trelloTasks.taskCards">
+				<div class="name">{{card.name}}</div>
+				<div class="board-and-list">{{lists[card.idList].name}} | {{boards[card.idBoard].name}}</div>
+			</div>
+		</div>
+	</div>
+	<div class="all-cards section" droppable="{ hoverClass: 'burning-card', tolerance: 'pointer' }" fill-window-height="">
+		<h3>Cards</h3>
+		<div class="scrollable" fill-parent-height="">
+			<div class="organization" ng-repeat="organization in organizations" ng-show="organizationHasCards(organization)">
+				<h4 ng-click="isOrganizationCollapsed = !isOrganizationCollapsed">{{organization.displayName}}</h4>
+				<div collapse="isOrganizationCollapsed">
+					<div class="board" ng-repeat="board in organization.boards" ng-show="boardHasCards(board)">
+						<h5 ng-click="isBoardCollapsed = !isBoardCollapsed">{{board.name}}</h5>
+
+						<div collapse="isBoardCollapsed">
+							<div class="list" ng-repeat="list in board.lists" ng-show="list.cards.length">
+								<h6>{{list.name}}</h6>
+								<div class="cards">
+									<div class="card" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone' }" ng-model="card">
+										{{card.name}}
+										<div class="board-and-list">in {{lists[card.idList].name}}</div>
+									</div>
+								</div>
+							</div>
+						</div>
+
+						<div class="collapsed-message" ng-click="isBoardCollapsed = !isBoardCollapsed" ng-show="isBoardCollapsed">
+							Show board...
+						</div>
+					</div>
+				</div>
+				<div class="collapsed-message" ng-click="isOrganizationCollapsed = !isOrganizationCollapsed" ng-show="isOrganizationCollapsed">
+					Show organization...
+				</div>
+			</div>
+		</div>
+	</div>
+</div>
