@@ -57,7 +57,43 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 	trello.lists = {}
 	trello.cards = {}
 
-	trello.on 'authenticated', () ->
+	mergeObject = (src, dst) ->
+		if src == dst
+			return dst
+
+		angular.forEach src, (value, key) ->
+			if key.charAt?(0) == '$'
+				return
+			if (_.isObject(value) && _.isObject(dst[key])) or
+			 	(_.isArray(value) && _.isArray(dst[key]))
+				mergeObject value, dst[key]
+			else if dst[key] != value
+				dst[key] = value
+
+		if _.isArray(dst) && _.isArray(src)
+			dst.length = src.length
+		else
+			angular.forEach dst, (value, key) ->
+				if key.charAt?(0) == '$'
+					return
+				if _.isUndefined src[key]
+					delete dst[key]
+		return dst
+
+	firstSync = true
+	synchronize = () ->
+		if firstSync
+			newOrganizations = trello.organizations
+			newBoards = trello.boards
+			newCards = trello.cards
+			newLists = trello.lists
+			firstSync = false
+		else
+			newOrganizations = { 'my': { displayName: "My Boards" } }
+			newBoards = {}
+			newCards = {}
+			newLists = {}
+
 		$q.all([
 			get('member/me/boards', { lists: 'open' }),
 			get('member/me/organizations')
@@ -67,31 +103,46 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			organizations = results[1]
 
 			_.each organizations, (organization) ->
-				trello.organizations[organization.id] = organization
+				newOrganizations[organization.id] = organization
 
 			return $q.all(_.map boards, (board) ->
-				if not board.idOrganization || not trello.organizations[board.idOrganization]
+				if not board.idOrganization || not newOrganizations[board.idOrganization]
 					board.idOrganization = 'my'
 
-				trello.organizations[board.idOrganization].boards ?= []
-				trello.organizations[board.idOrganization].boards.push board
+				newOrganizations[board.idOrganization].boards ?= []
+				newOrganizations[board.idOrganization].boards.push board
 
-				trello.boards[board.id] = board
+				newBoards[board.id] = board
 				_.each board.lists, (list) ->
-					trello.lists[list.id] = list
+					newLists[list.id] = list
 
 				return get("board/#{board.id}/cards").then (cards) ->
 					board.cards = cards
 					_.each cards, (card) ->
-						trello.lists[card.idList].cards ?= []
-						trello.lists[card.idList].cards.push card
-						trello.cards[card.id] = card
+						newLists[card.idList].cards ?= []
+						newLists[card.idList].cards.push card
+						newCards[card.id] = card
 			)
 		.then () ->
+			mergeObject newOrganizations, trello.organizations
+			mergeObject newBoards, trello.boards
+			mergeObject newCards, trello.cards
+			mergeObject newLists, trello.lists
+
 			trello.trigger 'cards-updated', trello.cards
 			trello.trigger 'lists-updated', trello.lists
 			trello.trigger 'boards-updated', trello.boards
 			trello.trigger 'organizations-updated', trello.organizations
+
+
+	timer = null
+	synchronizeOnTimer = () ->
+		synchronize().then () ->
+			timer = $timeout synchronizeOnTimer, 10000
+
+	trello.on 'authenticated', synchronizeOnTimer
+	trello.on 'unauthenticated', () ->
+		timer?.cancel()
 
 	return trello
 ]
