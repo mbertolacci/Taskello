@@ -20,8 +20,12 @@ angular.module('TrelloTasksApp').directive 'fillWindowHeight', ['$timeout', ($ti
 				'height': windowHeight - offset.top - marginBottom
 			$element.trigger 'resized'
 
+		setHeightOnInterval = () ->
+			setHeight()
+			$timeout setHeightOnInterval, 1000
+		setHeightOnInterval()
+
 		$(window).on 'resize', setHeight
-		$timeout setHeight
 ]
 
 angular.module('TrelloTasksApp').directive 'throttledModel', [() ->
