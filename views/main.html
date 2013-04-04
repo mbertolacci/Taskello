@@ -14,6 +14,9 @@
 	</div>
 	<div ng-switch-when="unauthenticated" ng-switch-when="authenticating">
 		<h3>Sign in or register to get started</h3>
+		<p>
+			Please note: this is not your Trello account. If you haven't signed in before, just register a new account.
+		</p>
 		<div class="alert alert-error" ng-show="trelloTasks.lastAuthenticationError.code" ng-switch="trelloTasks.lastAuthenticationError.code">
 			<div ng-switch-when="EMAIL_TAKEN">
 				Email is already associated with an account. Please login.
