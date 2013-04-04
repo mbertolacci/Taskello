@@ -51,21 +51,23 @@ angular.module('TrelloTasksApp').controller 'MainCtrl', ['$scope', '$q', 'Trello
 	 	_.any organization.boards, (board) ->
 	 		$scope.boardHasMatchingCards board, searchTerm
 
-	cardMatches = (card, searchTerm) ->
-		if !searchTerm || searchTerm == ''
-			return true
-		searchRegex = ///#{searchTerm}///i
-		if card.name.match searchRegex
-			return true
-		if Trello.lists[card.idList].name.match searchRegex
-			return true
-		if Trello.boards[card.idBoard].name.match searchRegex
+	cardMatches = (card, searchTerms) ->
+		if !searchTerms || searchTerms == '' || !searchTerms.split
 			return true
 
-		organizationId = Trello.boards[card.idBoard].idOrganization || 'my'
-		if Trello.organizations[organizationId].displayName.match searchRegex
-			return true
-		return false
+		return _.every _.toArray(searchTerms.split /\ /g), (searchTerm) ->
+			searchRegex = ///#{searchTerm}///i
+			if card.name.match searchRegex
+				return true
+			if Trello.lists[card.idList].name.match searchRegex
+				return true
+			if Trello.boards[card.idBoard].name.match searchRegex
+				return true
+
+			organizationId = Trello.boards[card.idBoard].idOrganization || 'my'
+			if Trello.organizations[organizationId].displayName.match searchRegex
+				return true
+			return false
 
 	hasMatchingCards = (cards, searchTerm) ->
  		_.any cards, (card) -> cardMatches card, searchTerm
