@@ -88,7 +88,7 @@
 							<div class="list" ng-repeat="list in board.lists" ng-show="listHasMatchingCards(list, searchTerm)">
 								<h6>{{list.name}}</h6>
 								<div class="cards">
-									<div class="card" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone' }" ng-model="card" ng-show="cardMatches(card, searchTerm)">
+									<div class="card" ng-class=" { 'in-task-list': trelloTasks.inTaskList(card) }" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone' }" ng-model="card" ng-show="cardMatches(card, searchTerm)">
 										{{card.name}}
 										<div class="board-and-list">in {{lists[card.idList].name}}</div>
 									</div>

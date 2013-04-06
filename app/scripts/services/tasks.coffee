@@ -138,6 +138,10 @@ angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope
 			currentCards = _.filter taskCards, (card) -> currentCardIds[card.id]
 			angular.copy currentCards, taskCards
 
+	trelloTasks.taskCards.then (taskCards) ->
+		trelloTasks.inTaskList = (card) ->
+			!!_.findWhere taskCards, { id: card.id }
+
 	trelloTasks.createUser = (email, password) ->
 		trelloTasks.creatingUser = true
 		Tasks.createUser
@@ -147,7 +151,6 @@ angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope
 			trelloTasks.creatingUser = false
 		, () ->
 			trelloTasks.creatingUser = false
-
 
 	trelloTasks.signIn = (email, password) ->
 		trelloTasks.authenticating = true

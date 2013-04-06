@@ -118,6 +118,10 @@ $tasks-width: $total-width - $tasks-right-margin - $all-cards-width;
 				-webkit-transform: rotate(5deg);
 			}
 
+			&.in-task-list {
+				opacity: 0.4;
+			}
+
 			.board-and-list {
 				font-size: 11px;
 				position: absolute;
