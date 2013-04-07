@@ -51,11 +51,16 @@ angular.module('TrelloTasksApp').controller 'MainCtrl', ['$scope', '$q', 'Trello
 	$scope.lists = Trello.lists
 	$scope.boards = Trello.boards
 
-	$scope.organizationHasMatchingCards = (organization, searchTerm) ->
+	$scope.organizationHasMatchingCards = (organization, filterCriteria) ->
 	 	_.any organization.boards, (board) ->
-	 		$scope.boardHasMatchingCards board, searchTerm
+	 		$scope.boardHasMatchingCards board, filterCriteria
 
-	cardMatches = (card, searchTerms) ->
+	cardMatches = (card, filterCriteria) ->
+		if filterCriteria.justMe
+			if _.indexOf(card.idMembers, Trello.me.id) == -1
+				return false
+
+		searchTerms = filterCriteria.searchTerms
 		if !searchTerms || searchTerms == '' || !searchTerms.split
 			return true
 
@@ -73,12 +78,12 @@ angular.module('TrelloTasksApp').controller 'MainCtrl', ['$scope', '$q', 'Trello
 				return true
 			return false
 
-	hasMatchingCards = (cards, searchTerm) ->
- 		_.any cards, (card) -> cardMatches card, searchTerm
+	hasMatchingCards = (cards, filterCriteria) ->
+ 		_.any cards, (card) -> cardMatches card, filterCriteria
 
- 	$scope.boardHasMatchingCards = (board, searchTerm) ->
- 		hasMatchingCards board.cards, searchTerm
- 	$scope.listHasMatchingCards = (list, searchTerm) ->
- 		hasMatchingCards list.cards, searchTerm
+ 	$scope.boardHasMatchingCards = (board, filterCriteria) ->
+ 		hasMatchingCards board.cards, filterCriteria
+ 	$scope.listHasMatchingCards = (list, filterCriteria) ->
+ 		hasMatchingCards list.cards, filterCriteria
  	$scope.cardMatches = cardMatches
 ]

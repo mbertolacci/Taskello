@@ -50,6 +50,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 
 	trello.getApiToken = () -> Trello.token()
 
+	trello.me = {}
 	trello.organizations = {
 		'my': { displayName: "My Boards" }
 	}
@@ -87,20 +88,26 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			newBoards = trello.boards
 			newCards = trello.cards
 			newLists = trello.lists
+			newMe = trello.me
 			firstSync = false
 		else
 			newOrganizations = { 'my': { displayName: "My Boards" } }
 			newBoards = {}
 			newCards = {}
 			newLists = {}
+			newMe = {}
 
 		$q.all([
 			get('member/me/boards', { lists: 'open' }),
-			get('member/me/organizations')
+			get('member/me/organizations'),
+			get('member/me')
 		])
 		.then (results) ->
 			boards = results[0]
 			organizations = results[1]
+			me = results[2]
+
+			angular.copy me, newMe
 
 			_.each organizations, (organization) ->
 				newOrganizations[organization.id] = organization
@@ -128,6 +135,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			mergeObject newBoards, trello.boards
 			mergeObject newCards, trello.cards
 			mergeObject newLists, trello.lists
+			mergeObject newMe, trello.me
 
 			trello.trigger 'cards-updated', trello.cards
 			trello.trigger 'lists-updated', trello.lists
