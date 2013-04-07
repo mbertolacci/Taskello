@@ -76,19 +76,25 @@
 	</div>
 	<div class="all-cards section" droppable="{ hoverClass: 'burning-card', tolerance: 'pointer' }" fill-window-height="">
 		<h3>Cards</h3>
-		<input type="text" throttled-model="searchTerm" placeholder="Search cards...">
+		<form class="form-inline">
+			<input class="input" type="text" throttled-model="searchTerms" placeholder="Search cards...">
+			<label class="checkbox">
+				<input type="checkbox" ng-model="justMe">
+				Just cards I'm tagged in
+			</label>
+		</form>
 		<div class="scrollable" fill-parent-height="">
-			<div class="organization" ng-repeat="organization in organizations" ng-show="organizationHasMatchingCards(organization, searchTerm)">
+			<div class="organization" ng-repeat="organization in organizations" ng-show="organizationHasMatchingCards(organization, { justMe: justMe, searchTerms: searchTerms })">
 				<h4 ng-click="isOrganizationCollapsed = !isOrganizationCollapsed">{{organization.displayName}}</h4>
 				<div collapse="isOrganizationCollapsed">
-					<div class="board" ng-repeat="board in organization.boards" ng-show="boardHasMatchingCards(board, searchTerm)">
+					<div class="board" ng-repeat="board in organization.boards" ng-show="boardHasMatchingCards(board, { justMe: justMe, searchTerms: searchTerms })">
 						<h5 ng-click="isBoardCollapsed = !isBoardCollapsed">{{board.name}}</h5>
 
 						<div collapse="isBoardCollapsed">
-							<div class="list" ng-repeat="list in board.lists" ng-show="listHasMatchingCards(list, searchTerm)">
+							<div class="list" ng-repeat="list in board.lists" ng-show="listHasMatchingCards(list, { justMe: justMe, searchTerms: searchTerms })">
 								<h6>{{list.name}}</h6>
 								<div class="cards">
-									<div class="card" ng-class=" { 'in-task-list': trelloTasks.inTaskList(card) }" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone' }" ng-model="card" ng-show="cardMatches(card, searchTerm)">
+									<div class="card" ng-class=" { 'in-task-list': trelloTasks.inTaskList(card) }" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone' }" ng-model="card" ng-show="cardMatches(card, { justMe: justMe, searchTerms: searchTerms })">
 										{{card.name}}
 										<div class="board-and-list">in {{lists[card.idList].name}}</div>
 									</div>
