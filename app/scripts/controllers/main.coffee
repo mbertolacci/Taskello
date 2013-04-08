@@ -8,7 +8,7 @@ angular.module('TrelloTasksApp').directive 'fillParentHeight', ['$timeout', ($ti
 				'max-height': parentHeight - (offset.top - parentOffset.top)
 
 		$element.parent().on 'resized', setMaxHeight
-		$timeout setMaxHeight
+		setTimeout setMaxHeight
 ]
 angular.module('TrelloTasksApp').directive 'fillWindowHeight', ['$timeout', ($timeout) ->
 	($scope, $element, $attrs) ->
@@ -22,7 +22,7 @@ angular.module('TrelloTasksApp').directive 'fillWindowHeight', ['$timeout', ($ti
 
 		setHeightOnInterval = () ->
 			setHeight()
-			$timeout setHeightOnInterval, 1000
+			setTimeout setHeightOnInterval, 1000
 		setHeightOnInterval()
 
 		$(window).on 'resize', setHeight
