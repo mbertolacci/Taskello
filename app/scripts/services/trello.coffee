@@ -16,14 +16,31 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 
 	trello.authorized = false
 
-	get = (path, params = {}) ->
+	$rootScope.$watch () -> console.log 'digested'
+
+	get = (path, args...) ->
+		params = {}
+		shouldTriggerUpdates = true
+		if _.isObject args[0]
+			params = args[0]
+			shouldTriggerUpdates = if args[1] == false then false else true
+		else
+			shouldTriggerUpdates = if args[0] == false then false else true
+
 		deferred = $q.defer()
 		Trello.get path, params, (result) ->
-			$rootScope.$apply () ->
+			if shouldTriggerUpdates
+				$rootScope.$apply () ->
+					deferred.resolve result
+			else
 				deferred.resolve result
 		, (error) ->
-			$rootScope.$apply () ->
+			if shouldTriggerUpdates
+				$rootScope.$apply () ->
+					deferred.reject error
+			else
 				deferred.reject error
+
 		return deferred.promise
 
 	trello.authorize = (token) ->
@@ -83,6 +100,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 
 	firstSync = true
 	synchronize = () ->
+		shouldTriggerUpdates = false
 		if firstSync
 			newOrganizations = trello.organizations
 			newBoards = trello.boards
@@ -90,6 +108,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			newLists = trello.lists
 			newMe = trello.me
 			firstSync = false
+			shouldTriggerUpdates = true
 		else
 			newOrganizations = { 'my': { displayName: "My Boards" } }
 			newBoards = {}
@@ -98,9 +117,9 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			newMe = {}
 
 		$q.all([
-			get('member/me/boards', { lists: 'open' }),
-			get('member/me/organizations'),
-			get('member/me')
+			get('member/me/boards', { lists: 'open' }, shouldTriggerUpdates),
+			get('member/me/organizations', shouldTriggerUpdates),
+			get('member/me', shouldTriggerUpdates)
 		])
 		.then (results) ->
 			boards = results[0]
@@ -123,7 +142,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 				_.each board.lists, (list) ->
 					newLists[list.id] = list
 
-				return get("board/#{board.id}/cards").then (cards) ->
+				return get("board/#{board.id}/cards", shouldTriggerUpdates).then (cards) ->
 					board.cards = cards
 					_.each cards, (card) ->
 						newLists[card.idList].cards ?= []
@@ -146,7 +165,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 	timer = null
 	synchronizeOnTimer = () ->
 		synchronize().then () ->
-			timer = $timeout synchronizeOnTimer, 10000
+			timer = $timeout synchronizeOnTimer, 30000
 
 	trello.on 'authenticated', synchronizeOnTimer
 	trello.on 'unauthenticated', () ->
