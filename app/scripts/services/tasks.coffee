@@ -1,4 +1,4 @@
-angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$timeout', '$q', '$serviceScope', 'angularBurn', ($window, $rootScope, $timeout, $q, $serviceScope, angularBurn) ->
+angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$timeout', '$serviceScope', 'angularBurn', ($window, $rootScope, $timeout, $serviceScope, angularBurn) ->
 	$scope = $serviceScope()
 
 	$scope.user = null
@@ -35,8 +35,8 @@ angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$ti
 		taskCardsDeferred.resolve tasksClient.$get('value')
 		trelloAccountDeferred.resolve trelloAccountClient.$get('value')
 
-		tasksClient.$attachProperty('value').to($scope, 'taskCards')
-		trelloAccountClient.$attachProperty('value').to($scope, 'trelloAccount')
+		tasksClient.$attachProperty('value', $scope, 'taskCards')
+		trelloAccountClient.$attachProperty('value', $scope, 'trelloAccount')
 
 		$scope.authenticationState = 'authenticated'
 		$scope.$emit 'authenticated'
@@ -118,7 +118,7 @@ angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope
 
 	updateAuthState()
 
-	Tasks.$attachProperty('taskCards').to($scope, 'taskCards')
+	Tasks.$attachProperty('taskCards', $scope, 'taskCards')
 
 	Trello.$on 'cards-updated', (event, cards) ->
 		Tasks.$get('taskCards').then () ->

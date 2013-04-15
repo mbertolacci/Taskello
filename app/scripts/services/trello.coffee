@@ -11,7 +11,7 @@ angular.module('TrelloTasksApp').factory 'makeEventEmitter', ['$rootScope', '$ti
 		return obj
 ]
 
-angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$cleanQ', '$serviceScope', 'makeEventEmitter', ($timeout, $cleanQ, $serviceScope, makeEventEmitter) ->
+angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$serviceQ', '$serviceScope', 'makeEventEmitter', ($timeout, $serviceQ, $serviceScope, makeEventEmitter) ->
 	$scope = $serviceScope('trello')
 
 	$scope.authenticationState = 'unknown'
@@ -25,7 +25,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$cleanQ', '$ser
 		else
 			shouldTriggerUpdates = if args[0] == false then false else true
 
-		deferred = $cleanQ.defer()
+		deferred = $serviceQ.defer()
 		Trello.get path, params, (result) ->
 			if shouldTriggerUpdates
 				$scope.$apply () ->
@@ -44,7 +44,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$cleanQ', '$ser
 	$scope.authorize = (token) ->
 		if token
 			Trello.setToken token
-		defer = $cleanQ.defer()
+		defer = $serviceQ.defer()
 
 		$scope.authenticationState = 'authenticating'
 		# Timeout because if this returns synchronously
@@ -98,7 +98,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$cleanQ', '$ser
 			newLists = {}
 			newMe = {}
 
-		$cleanQ.all([
+		$serviceQ.all([
 			get('member/me/boards', { lists: 'open' }, shouldTriggerUpdates),
 			get('member/me/organizations', shouldTriggerUpdates),
 			get('member/me', shouldTriggerUpdates)
@@ -113,7 +113,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$cleanQ', '$ser
 			_.each organizations, (organization) ->
 				newOrganizations[organization.id] = organization
 
-			return $cleanQ.all(_.map boards, (board) ->
+			return $serviceQ.all(_.map boards, (board) ->
 				if not board.idOrganization || not newOrganizations[board.idOrganization]
 					board.idOrganization = 'my'
 
