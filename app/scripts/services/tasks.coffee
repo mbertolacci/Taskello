@@ -1,168 +1,165 @@
-angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$timeout', '$q', 'makeEventEmitter', 'angularBurn', ($window, $rootScope, $timeout, $q, makeEventEmitter, angularBurn) ->
-	tasks = makeEventEmitter {}
+angular.module('TrelloTasksApp').factory 'Tasks', ['$window', '$rootScope', '$timeout', '$q', '$serviceScope', 'angularBurn', ($window, $rootScope, $timeout, $q, $serviceScope, angularBurn) ->
+	$scope = $serviceScope()
 
-	taskDeferred = $q.defer()
-	trelloAccountDeferred = $q.defer()
+	$scope.user = null
+	$scope.authenticationState = 'unknown'
+	$scope.lastAuthenticationError = {}
 
-	tasks.user = null
-	tasks.authenticationState = 'unknown'
-	tasks.lastAuthenticationError = {}
+	$scope.taskCards = null
+	$scope.trelloApiToken = null
 
-	firebaseClient = angularBurn.client "https://trellotasks.firebaseio.com/users"
+	usersClient = angularBurn.client "https://trellotasks.firebaseio.com/users"
+	authClient = usersClient.authClient()
 
-	authClient = firebaseClient.authClient (error, user) ->
-		if user
-			tasks.user = user
-			tasks.authenticationState = 'authenticated'
+	taskCardsDeferred = $scope.$defer 'taskCards'
+	trelloAccountDeferred = $scope.$defer 'trelloAccount'
 
-			angular.copy {}, tasks.lastAuthenticationError
-			tasks.trigger 'authenticated'
-		else
-			tasks.user = null
-			tasks.authenticationState = 'unauthenticated'
-			angular.copy error, tasks.lastAuthenticationError
-			tasks.trigger 'unauthenticated', error
+	authClient.$on 'unauthenticated', (event, error) ->
+		$scope.lastAuthenticationError = error
+		$scope.authenticationState = 'unauthenticated'
+		$scope.$emit 'unauthenticated'
+
 
 	tasksClient = null
 	trelloAccountClient = null
-
-	tasks.on 'authenticated', () ->
+	authClient.$on 'authenticated', (event, user) ->
 		if not tasksClient
-			tasksClient = firebaseClient.child "#{tasks.user.id}/tasks", []
-			taskDeferred.resolve tasksClient
-
-			trelloAccountClient = firebaseClient.child "#{tasks.user.id}/trelloAccount", {}
-			trelloAccountDeferred.resolve trelloAccountClient
+			tasksClient = usersClient.child "#{user.id}/tasks", []
+			trelloAccountClient = usersClient.child "#{user.id}/trelloAccount", {}
 
 		tasksClient.watch()
 		trelloAccountClient.watch()
 
-	tasks.on 'unauthenticated', () ->
-		tasksClient?.stopWatching()
-		trelloAccountClient?.stopWatching()
+		$scope.user = user
 
-	tasks.getTaskCards = () -> taskDeferred.promise
-	tasks.getTrelloToken = () ->
-		trelloAccountDeferred.promise.then (trelloAccount) ->
-			trelloAccount.apiToken
+		taskCardsDeferred.resolve tasksClient.$get('value')
+		trelloAccountDeferred.resolve trelloAccountClient.$get('value')
 
-	tasks.setTrelloToken = (token) ->
-		trelloAccountDeferred.promise.then (trelloAccount) ->
-			trelloAccount.apiToken = token
+		tasksClient.$attachProperty('value').to($scope, 'taskCards')
+		trelloAccountClient.$attachProperty('value').to($scope, 'trelloAccount')
 
-	tasks.logout = () ->
-		tasksClient?.stopWatching()
-		trelloAccountClient?.stopWatching()
+		$scope.authenticationState = 'authenticated'
+		$scope.$emit 'authenticated'
+
+	$scope.logout = () ->
+		tasksClient.stopWatching()
+		trelloAccountClient.stopWatching()
 
 		authClient.logout()
-	tasks.login = (credentials) ->
+	$scope.login = (credentials) ->
+		$scope.authenticationState = 'authenticating'
+
 		authClient.login 'password',
 			email: credentials.email
 			password: credentials.password
 
-	tasks.createUser = (credentials) ->
-		deferred = $q.defer()
-		authClient.createUser credentials.email, credentials.password, (error, user) ->
-			if not error
-				tasks.login credentials
-				deferred.resolve()
-			else
-				deferred.reject()
-				$rootScope.$apply () ->
-					angular.copy error, tasks.lastAuthenticationError
-		return deferred.promise
+	$scope.createUser = (credentials) ->
+		authClient
+		.createUser(credentials.email, credentials.password)
+		.then (user) ->
+			$scope.login credentials
+		, (error) ->
+			$scope.$apply () ->
+				$scope.lastAuthenticationError = error
 
-	return tasks
+	return $scope
 ]
 
-angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope', 'makeEventEmitter', 'Trello', 'Tasks', ($timeout, $rootScope, makeEventEmitter, Trello, Tasks) ->
-	trelloTasks = makeEventEmitter {}
+angular.module('TrelloTasksApp').factory 'TrelloTasks', ['$timeout', '$rootScope', '$serviceScope', 'Trello', 'Tasks', ($timeout, $rootScope, $serviceScope, Trello, Tasks) ->
+	$scope = $serviceScope()
 
-	trelloTasks.authenticationState = 'unknown'
+	$scope.authenticationState = 'unknown'
 
-	trelloTasks.lastAuthenticationError = Tasks.lastAuthenticationError
+	$scope.lastAuthenticationError = Tasks.lastAuthenticationError
 
 	updateAuthState = () ->
-		trelloTasks.user = Tasks.user
+		$scope.user = Tasks.user
 
+		states =
+			# Task level
+			unknown: 'unknown'
+			authenticating: 'authenticating'
+			unauthenticated: 'unauthenticated'
+			authenticated:
+				# Trello level
+				unknown: 'authenticating'
+				authenticating: 'authenticating'
+				unauthenticated: 'needTrello'
+				authenticated: 'authenticated'
 
-		if Tasks.authenticationState == 'unknown'
-			trelloTasks.authenticationState = 'unknown'
-		else if Tasks.authenticationState != 'authenticated'
-			if trelloTasks.authenticating
-				trelloTasks.authenticationState = 'authenticating'
-			else
-				trelloTasks.authenticationState = 'unauthenticated'
-		else if not Trello.authorized
-			if trelloTasks.authenticating
-				trelloTasks.authenticationState = 'authenticating'
-			else
-				trelloTasks.authenticationState = 'needTrello'
+		firstState = states[Tasks.authenticationState]
+
+		if not _.isObject(firstState)
+			$scope.authenticationState = firstState
 		else
-			trelloTasks.authenticationState = 'authenticated'
+			$scope.authenticationState = firstState[Trello.authenticationState]
 
-	Trello.on 'unauthenticated', updateAuthState
-	Tasks.on 'unauthenticated', updateAuthState
+		console.log "New state is #{$scope.authenticationState}"
 
-	Trello.on 'authenticated', () ->
-		Tasks.setTrelloToken Trello.getApiToken()
-		updateAuthState()
-	Tasks.on 'authenticated', () ->
-		trelloTasks.authenticating = true
-		Tasks.getTrelloToken().then (trelloToken) ->
-			if trelloToken
-				trelloTasks.authenticating = true
-				Trello.authorize(trelloToken).then () ->
-					trelloTasks.authenticating = false
-				, () ->
-					trelloTasks.authenticating = false
+	Trello.$on 'unauthenticated', updateAuthState
+	Tasks.$on 'unauthenticated', updateAuthState
+	Trello.$on 'authenticated', updateAuthState
+	Tasks.$on 'authenticated', updateAuthState
+
+	Trello.$on 'authenticated', () ->
+		Tasks.$evalAsync () ->
+			Tasks.trelloAccount.apiToken = Trello.getApiToken()
+	
+	Tasks.$on 'authenticated', () ->
+		Tasks.$get('trelloAccount').then () ->
+			trelloApiToken = Tasks.trelloAccount.apiToken
+			if not trelloApiToken
+				Trello.authenticationState = 'unauthenticated'
 			else
-				trelloTasks.authenticating = false
+				Trello.authorize(trelloApiToken)
+
 			updateAuthState()
 		updateAuthState()
 
 	updateAuthState()
 
-	trelloTasks.taskCards = Tasks.getTaskCards()
+	Tasks.$attachProperty('taskCards').to($scope, 'taskCards')
 
-	Trello.on 'cards-updated', (cards) ->
-		trelloTasks.taskCards.then (taskCards) ->
+	Trello.$on 'cards-updated', (event, cards) ->
+		Tasks.$get('taskCards').then () ->
 			currentCardIds = {}
+
 			_.each cards, (card) ->
-				taskCard = _.findWhere taskCards, { id: card.id }
+				taskCard = _.findWhere $scope.taskCards, { id: card.id }
 				if taskCard
 					angular.copy card, taskCard
 					currentCardIds[taskCard.id] = true
 
 			# Clear out the cards that are no longer current
-			currentCards = _.filter taskCards, (card) -> currentCardIds[card.id]
-			angular.copy currentCards, taskCards
+			currentCards = _.filter $scope.taskCards, (card) -> currentCardIds[card.id]
 
-	trelloTasks.taskCards.then (taskCards) ->
-		trelloTasks.inTaskList = (card) ->
-			!!_.findWhere taskCards, { id: card.id }
+			$scope.$update 'taskCards', currentCards
 
-	trelloTasks.createUser = (email, password) ->
-		trelloTasks.creatingUser = true
+	Tasks.$get('taskCards').then () ->
+		$scope.inTaskList = (card) ->
+			!!_.findWhere Tasks.taskCards, { id: card.id }
+
+	$scope.createUser = (email, password) ->
+		$scope.creatingUser = true
 		Tasks.createUser
 			email: email
 			password: password
 		.then () -> 
-			trelloTasks.creatingUser = false
+			$scope.creatingUser = false
 		, () ->
-			trelloTasks.creatingUser = false
+			$scope.creatingUser = false
 
-	trelloTasks.signIn = (email, password) ->
-		trelloTasks.authenticating = true
+	$scope.signIn = (email, password) ->
+		$scope.authenticating = true
 		Tasks.login
 			email: email
 			password: password
 
-	trelloTasks.signOut = () ->
+	$scope.signOut = () ->
 		Tasks.logout()
 
-	trelloTasks.connectTrello = () ->
+	$scope.connectTrello = () ->
 		Trello.authorize()
 
-	return trelloTasks
+	return $scope
 ]

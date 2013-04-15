@@ -11,12 +11,10 @@ angular.module('TrelloTasksApp').factory 'makeEventEmitter', ['$rootScope', '$ti
 		return obj
 ]
 
-angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$q', 'makeEventEmitter', ($rootScope, $timeout, $q, makeEventEmitter) ->
-	trello = makeEventEmitter({})
+angular.module('TrelloTasksApp').factory 'Trello', ['$timeout', '$cleanQ', '$serviceScope', 'makeEventEmitter', ($timeout, $cleanQ, $serviceScope, makeEventEmitter) ->
+	$scope = $serviceScope('trello')
 
-	trello.authorized = false
-
-	$rootScope.$watch () -> console.log 'digested'
+	$scope.authenticationState = 'unknown'
 
 	get = (path, args...) ->
 		params = {}
@@ -27,86 +25,70 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 		else
 			shouldTriggerUpdates = if args[0] == false then false else true
 
-		deferred = $q.defer()
+		deferred = $cleanQ.defer()
 		Trello.get path, params, (result) ->
 			if shouldTriggerUpdates
-				$rootScope.$apply () ->
+				$scope.$apply () ->
 					deferred.resolve result
 			else
 				deferred.resolve result
 		, (error) ->
 			if shouldTriggerUpdates
-				$rootScope.$apply () ->
+				$scope.$apply () ->
 					deferred.reject error
 			else
 				deferred.reject error
 
 		return deferred.promise
 
-	trello.authorize = (token) ->
+	$scope.authorize = (token) ->
 		if token
 			Trello.setToken token
-		defer = $q.defer()
-		Trello.authorize
-			name: "Taskello"
-			type: 'popup'
-			interactive: !token
-			persist: false
-			success: () ->
-				# Timeout because if this returns synchronously
-				# $apply will already be in progress
-				$timeout () ->
-					trello.authorized = true
-					trello.trigger 'authenticated'
-					defer.resolve true
-			error: () ->
-				$timeout () ->
-					trello.trigger 'unauthenticated'
-					defer.reject true
+		defer = $cleanQ.defer()
+
+		$scope.authenticationState = 'authenticating'
+		# Timeout because if this returns synchronously
+		# $apply will already be in progress
+		setTimeout () ->
+			Trello.authorize
+				name: "Taskello"
+				type: 'popup'
+				interactive: !token
+				persist: false
+				success: () ->
+					$scope.$apply () ->
+						$scope.authenticationState = 'authenticated'
+						$scope.$emit 'authenticated'
+						defer.resolve true
+				error: () ->
+					$scope.$apply () ->
+						$scope.authenticationState = 'unauthenticated'
+						$scope.$emit 'unauthenticated'
+						defer.reject true
+		, 0
 		return defer.promise
 
-	trello.getApiToken = () -> Trello.token()
+	$scope.getApiToken = () -> Trello.token()
 
-	trello.me = {}
-	trello.organizations = {
+	$scope.me = {}
+	$scope.organizations = {
 		'my': { displayName: "My Boards" }
 	}
-	trello.boards = {}
-	trello.lists = {}
-	trello.cards = {}
-
-	mergeObject = (src, dst) ->
-		if src == dst
-			return dst
-
-		angular.forEach src, (value, key) ->
-			if key.charAt?(0) == '$'
-				return
-			if (_.isObject(value) && _.isObject(dst[key])) or
-			 	(_.isArray(value) && _.isArray(dst[key]))
-				mergeObject value, dst[key]
-			else if dst[key] != value
-				dst[key] = value
-
-		if _.isArray(dst) && _.isArray(src)
-			dst.length = src.length
-		else
-			angular.forEach dst, (value, key) ->
-				if key.charAt?(0) == '$'
-					return
-				if _.isUndefined src[key]
-					delete dst[key]
-		return dst
+	$scope.boards = {}
+	$scope.lists = {}
+	$scope.cards = {}
 
 	firstSync = true
 	synchronize = () ->
+		$scope.synchronizing = true
+
 		shouldTriggerUpdates = false
 		if firstSync
-			newOrganizations = trello.organizations
-			newBoards = trello.boards
-			newCards = trello.cards
-			newLists = trello.lists
-			newMe = trello.me
+			newOrganizations = $scope.organizations
+			newBoards = $scope.boards
+			newCards = $scope.cards
+			newLists = $scope.lists
+			newMe = $scope.me
 			firstSync = false
 			shouldTriggerUpdates = true
 		else
@@ -116,7 +98,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			newLists = {}
 			newMe = {}
 
-		$q.all([
+		$cleanQ.all([
 			get('member/me/boards', { lists: 'open' }, shouldTriggerUpdates),
 			get('member/me/organizations', shouldTriggerUpdates),
 			get('member/me', shouldTriggerUpdates)
@@ -131,7 +113,7 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 			_.each organizations, (organization) ->
 				newOrganizations[organization.id] = organization
 
-			return $q.all(_.map boards, (board) ->
+			return $cleanQ.all(_.map boards, (board) ->
 				if not board.idOrganization || not newOrganizations[board.idOrganization]
 					board.idOrganization = 'my'
 
@@ -150,16 +132,18 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 						newCards[card.id] = card
 			)
 		.then () ->
-			mergeObject newOrganizations, trello.organizations
-			mergeObject newBoards, trello.boards
-			mergeObject newCards, trello.cards
-			mergeObject newLists, trello.lists
-			mergeObject newMe, trello.me
+			$scope.$apply () ->
+				$scope.synchronizing = false
+				$scope.$update 'organizations', newOrganizations
+				$scope.$update 'boards', newBoards
+				$scope.$update 'cards', newCards
+				$scope.$update 'lists', newLists
+				$scope.$update 'me', newMe
 
-			trello.trigger 'cards-updated', trello.cards
-			trello.trigger 'lists-updated', trello.lists
-			trello.trigger 'boards-updated', trello.boards
-			trello.trigger 'organizations-updated', trello.organizations
+			$scope.$emit 'cards-updated', $scope.cards
+			$scope.$emit 'lists-updated', $scope.lists
+			$scope.$emit 'boards-updated', $scope.boards
+			$scope.$emit 'organizations-updated', $scope.organizations
 
 
 	timer = null
@@ -167,9 +151,9 @@ angular.module('TrelloTasksApp').factory 'Trello', ['$rootScope', '$timeout', '$
 		synchronize().then () ->
 			timer = $timeout synchronizeOnTimer, 30000
 
-	trello.on 'authenticated', synchronizeOnTimer
-	trello.on 'unauthenticated', () ->
+	$scope.$on 'authenticated', synchronizeOnTimer
+	$scope.$on 'unauthenticated', () ->
 		timer?.cancel()
 
-	return trello
+	return $scope
 ]

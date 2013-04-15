@@ -1,32 +1,68 @@
-angular.module('TrelloTasksApp').factory 'angularBurn', ['$rootScope', '$q', '$timeout', ($rootScope, $q, $timeout) ->
-	clientFromReference = (reference, initialValue = []) ->
-		deferred = $q.defer()
-		client = deferred.promise
+nextTick = (fn) ->
+	setTimeout fn, 0
 
-		value = null
+angular.module('TrelloTasksApp').factory 'angularBurn', ['$q', '$serviceScope', ($q, $serviceScope) ->
+	authClientFromReference = (reference) ->
+		$scope = $serviceScope()
+
+		authClient = new FirebaseAuthClient reference, (error, user) ->
+			nextTick () ->
+				$scope.$apply () ->
+					if not user
+						$scope.$emit 'unauthenticated', error
+					else
+						$scope.$emit 'authenticated', user
+
+		$scope.login = (args...) -> authClient.login args...
+		$scope.logout = (args...) -> authClient.logout args...
+
+		$scope.createUser = (args...) ->
+			deferred = $q.defer()
+			authClient.createUser args..., (error, user) ->
+				if error
+					deferred.reject error
+				else
+					deferred.resolve user
+			return deferred.promise
+
+		return $scope
+
+	clientFromReference = (reference, initialValue = []) ->
+		$scope = $serviceScope()
+
+		valueDeferred = $scope.$defer 'value'
+
 		lastValue = null
 
-		scopeWatchRemover = null
+		$applyNextTick = (fn) ->
+			setTimeout () ->
+				$scope.$apply fn
+			, 0
 
 		updateFromSnapshot = (snapshot) ->
-			if not value
-				value = angular.copy initialValue
-				deferred.resolve value
-			if snapshot.val()
-				angular.copy snapshot.val(), value
-			lastValue = angular.copy value
+			if not $scope.value
+				$scope.value = angular.copy initialValue
+				valueDeferred.resolve $scope.value
 
+			angular.copy snapshot.val(), $scope.value
+			lastValue = angular.copy $scope.value
+
+		scopeWatchRemover = null
 		startWatching = () ->
 			reference.on 'value', (snapshot) ->
-				$timeout () -> updateFromSnapshot snapshot
+				$applyNextTick () ->
+					updateFromSnapshot snapshot
 
 			firstWatch = true
-			scopeWatchRemover = $rootScope.$watch () ->
+			scopeWatchRemover = $scope.$watch () ->
 				if firstWatch
 					firstWatch = false
 					return
 
-				val = JSON.parse angular.toJson(value)
+				if _.isUndefined($scope.value)
+					return
+
+				val = JSON.parse angular.toJson($scope.value)
 
 				if not angular.equals(lastValue, val)
 					reference.set val
@@ -35,18 +71,16 @@ angular.module('TrelloTasksApp').factory 'angularBurn', ['$rootScope', '$q', '$t
 			scopeWatchRemover?()
 			reference.off 'value'
 
-		angular.extend client,
+		angular.extend $scope,
 			_reference: reference
-			authClient: (cb) ->
-				return new FirebaseAuthClient reference, (args...) ->
-					$rootScope.$eval () -> cb args...
+			authClient: () -> authClientFromReference(reference)
 			child: (path, initialValue) ->
 				childReference = reference.child path
 				clientFromReference childReference, initialValue
 			watch: startWatching
 			stopWatching: stopWatching
 
-		return client
+		return $scope
 
 	exports = {}
 	exports.client = (url, initialValue) ->

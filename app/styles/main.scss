@@ -130,6 +130,12 @@ $tasks-width: $total-width - $tasks-right-margin - $all-cards-width;
 			}
 		}
 	}
+
+	.updating {
+		position: absolute;
+		top: 10px;
+		right: 10px;
+	}
 }
 
 .task-cards {

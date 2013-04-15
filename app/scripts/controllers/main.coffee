@@ -47,9 +47,9 @@ angular.module('TrelloTasksApp').controller 'MainCtrl', ['$scope', '$q', 'Trello
 	$scope.isBoardCollapsed = false
 	$scope.isOrganizationCollapsed = false
 
-	$scope.organizations = Trello.organizations
-	$scope.lists = Trello.lists
-	$scope.boards = Trello.boards
+	$scope.$name = "main"
+
+	$scope.trello = Trello.$attach $scope, 'trello'
 
 	$scope.organizationHasMatchingCards = (organization, filterCriteria) ->
 	 	_.any organization.boards, (board) ->

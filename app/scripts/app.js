@@ -1,6 +1,6 @@
 'use strict';
 
-angular.module('TrelloTasksApp', ['ui.bootstrap'])
+angular.module('TrelloTasksApp', ['ui.bootstrap', 'serviceScope'])
   .config(['$routeProvider', function ($routeProvider) {
     $routeProvider
       .when('/', {
