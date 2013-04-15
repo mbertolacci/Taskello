@@ -47,9 +47,9 @@
 						<span ng-show="trelloTasks.creatingUser">Registering...</span>
 						<span ng-hide="trelloTasks.creatingUser">Register</span>
 					</button>
-					<button type="submit" class="btn btn-primary" ng-disabled="loginForm.$invalid || trelloTasks.authenticating">
-						<span ng-show="trelloTasks.authenticating">Signing in...</span>
-						<span ng-hide="trelloTasks.authenticating">Sign in</span>
+					<button type="submit" class="btn btn-primary" ng-disabled="loginForm.$invalid || trelloTasks.authenticationState == 'authenticating'">
+						<span ng-show="trelloTasks.authenticationState == 'authenticating'">Signing in...</span>
+						<span ng-hide="trelloTasks.authenticationState == 'authenticating'">Sign in</span>
 					</button>
 				</div>
 			</div>
@@ -70,11 +70,12 @@
 		<div class="task-cards cards scrollable" sortable="{placeholder: 'card-placeholder', connectWith: '.all-cards' }" ng-model="trelloTasks.taskCards">
 			<div class="card" ng-repeat="card in trelloTasks.taskCards">
 				<div class="name">{{card.name}}</div>
-				<div class="board-and-list">{{lists[card.idList].name}} | {{boards[card.idBoard].name}}</div>
+				<div class="board-and-list">{{trello.lists[card.idList].name}} | {{trello.boards[card.idBoard].name}}</div>
 			</div>
 		</div>
 	</div>
 	<div class="all-cards section" droppable="{ hoverClass: 'burning-card', tolerance: 'pointer' }" fill-window-height="">
+		<span ng-show="trello.synchronizing" class="updating">(updating...)</span>
 		<h3>Cards</h3>
 		<form class="form-inline">
 			<input class="input" type="text" throttled-model="searchTerms" placeholder="Search cards...">
@@ -84,7 +85,7 @@
 			</label>
 		</form>
 		<div class="scrollable" fill-parent-height="">
-			<div class="organization" ng-repeat="organization in organizations" ng-show="organizationHasMatchingCards(organization, { justMe: justMe, searchTerms: searchTerms })">
+			<div class="organization" ng-repeat="organization in trello.organizations" ng-show="organizationHasMatchingCards(organization, { justMe: justMe, searchTerms: searchTerms })">
 				<h4 ng-click="isOrganizationCollapsed = !isOrganizationCollapsed">{{organization.displayName}}</h4>
 				<div collapse="isOrganizationCollapsed">
 					<div class="board" ng-repeat="board in organization.boards" ng-show="boardHasMatchingCards(board, { justMe: justMe, searchTerms: searchTerms })">
