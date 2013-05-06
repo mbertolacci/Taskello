@@ -68,7 +68,7 @@
 	<div class="tasks section">
 		<h2>Tasks</h2>
 		<div class="task-cards cards scrollable" sortable="{placeholder: 'card-placeholder', connectWith: '.all-cards' }" ng-model="trelloTasks.taskCards">
-			<div class="card" ng-repeat="card in trelloTasks.taskCards">
+			<div class="card trello-card" ng-repeat="card in trelloTasks.taskCards">
 				<div class="name">{{card.name}}</div>
 				<div class="board-and-list">{{trello.lists[card.idList].name}} | {{trello.boards[card.idBoard].name}}</div>
 			</div>
@@ -89,22 +89,15 @@
 				<h4 ng-click="isOrganizationCollapsed = !isOrganizationCollapsed">{{organization.displayName}}</h4>
 				<div collapse="isOrganizationCollapsed">
 					<div class="board" ng-repeat="board in organization.boards" ng-show="boardHasMatchingCards(board, { justMe: justMe, searchTerms: searchTerms })">
-						<h5 ng-click="isBoardCollapsed = !isBoardCollapsed">{{board.name}}</h5>
+						<h5><a href="{{board.shortUrl}}" target="_blank">{{board.name}} <i class="icon-share icon-white"></i></a></h5>
 
-						<div collapse="isBoardCollapsed">
-							<div class="list" ng-repeat="list in board.lists" ng-show="listHasMatchingCards(list, { justMe: justMe, searchTerms: searchTerms })">
-								<h6>{{list.name}}</h6>
-								<div class="cards">
-									<div class="card" ng-class=" { 'in-task-list': trelloTasks.inTaskList(card) }" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone' }" ng-model="card" ng-show="cardMatches(card, { justMe: justMe, searchTerms: searchTerms })">
-										{{card.name}}
-										<div class="board-and-list">in {{lists[card.idList].name}}</div>
-									</div>
+						<div class="list" ng-repeat="list in board.lists" ng-show="listHasMatchingCards(list, { justMe: justMe, searchTerms: searchTerms })">
+							<h6>{{list.name}}</h6>
+							<div class="cards">
+								<div class="card trello-card" ng-class=" { 'in-task-list': trelloTasks.inTaskList(card) }" ng-repeat="card in list.cards" draggable="{ connectToSortable: '.cards', helper: 'clone', appendTo: 'body' }" ng-model="card" ng-show="cardMatches(card, { justMe: justMe, searchTerms: searchTerms })">
+									{{card.name}}
 								</div>
 							</div>
-						</div>
-
-						<div class="collapsed-message" ng-click="isBoardCollapsed = !isBoardCollapsed" ng-show="isBoardCollapsed">
-							Show board...
 						</div>
 					</div>
 				</div>
