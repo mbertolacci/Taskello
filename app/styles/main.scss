@@ -7,11 +7,14 @@ $base-card-spacing: 5px;
 $total-width: 940px;
 
 $organization-padding: 4px;
-$list-padding: 5px;
-$list-border: 1px;
+$board-padding: 7px;
+$list-padding: 4px;
+
+$card-list-padding: 5px;
+$card-list-border: 1px;
 
 $all-cards-columns: 2;
-$all-cards-width: 2 * ($list-padding + $organization-padding + $list-border) + $all-cards-columns * ($base-card-width + $base-card-spacing);
+$all-cards-width: 2 * ($card-list-padding + $organization-padding + $card-list-border + $board-padding + $list-padding) + $all-cards-columns * ($base-card-width + $base-card-spacing);
 
 $tasks-right-margin: 20px;
 $tasks-width: $total-width - $tasks-right-margin - $all-cards-width;
@@ -76,58 +79,47 @@ $tasks-width: $total-width - $tasks-right-margin - $all-cards-width;
 .app {
 	.organization {
 		padding: $organization-padding;
-		h4, .board {
+		h4 {
 			border-bottom: 1px solid #e5e5e5;
 			padding-bottom: 5px;
 		}
 		margin-bottom: 5px;
+
+		.board {
+			background-color: rgb(22, 75, 105);
+			@include ctb-border-radius(7px);
+			padding: $board-padding;
+			margin-bottom: 7px;
+			h5 {
+				a {
+					color: white;
+				}				
+			}
+			.list {
+				background-color: rgb(227, 227, 227);
+				@include ctb-border-radius(5px);
+				padding: $list-padding;
+				margin-bottom: 4px;
+
+				.trello-card {
+					border-color: #c0c0c0;
+				}
+			}
+		}
 	}
 
 	.section {
 		position: relative;
 		float: left;
 
-		border: $list-border solid #eeeeee;
+		border: $card-list-border solid #eeeeee;
 		border-radius: 4px;
-		padding: $list-padding;
+		padding: $card-list-padding;
 		margin-bottom: 40px;
 
 		.scrollable {
 			overflow: auto;
 			padding-bottom: 40px;
-		}
-
-		.card {
-			position: relative;
-			cursor: pointer;
-
-			background-color: white;
-
-			margin-bottom: 5px;
-
-			border: 1px solid #dedede;
-			-webkit-border-radius: 2px;
-			padding: 5px;
-			padding-bottom: 17px;
-			min-height: 45px;
-
-			overflow: hidden;
-
-			&.ui-sortable-helper {
-				-webkit-box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
-				-webkit-transform: rotate(5deg);
-			}
-
-			&.in-task-list {
-				opacity: 0.4;
-			}
-
-			.board-and-list {
-				font-size: 11px;
-				position: absolute;
-				right: 4px;
-				bottom: 4px;
-			}
 		}
 	}
 
@@ -138,9 +130,41 @@ $tasks-width: $total-width - $tasks-right-margin - $all-cards-width;
 	}
 }
 
+.trello-card {
+	position: relative;
+	cursor: pointer;
+
+	background-color: white;
+
+	margin-bottom: 5px;
+
+	border: 1px solid #dedede;
+	-webkit-border-radius: 2px;
+	padding: 5px;
+	padding-bottom: 17px;
+	min-height: 45px;
+
+	overflow: hidden;
+
+	&.ui-sortable-helper {
+		-webkit-box-shadow: 2px 2px 4px rgba(0, 0, 0, 0.4);
+		-webkit-transform: rotate(5deg);
+	}
+
+	&.in-task-list {
+		opacity: 0.4;
+	}
+
+	.board-and-list {
+		font-size: 11px;
+		position: absolute;
+		right: 4px;
+		bottom: 4px;
+	}
+}
+
 .task-cards {
 	.card {
-		border: 2px solid #dedede;
 		min-height: 60px;
 	}
 }

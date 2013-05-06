@@ -42,7 +42,7 @@
 .dropdown-menu > .active > a > [class*=" icon-"],
 .dropdown-submenu:hover > a > [class^="icon-"],
 .dropdown-submenu:hover > a > [class*=" icon-"] {
-  background-image: image-url("#{$iconWhiteSpritePath}");
+  background-image: url("../images/#{$iconWhiteSpritePath}");
 }
 
 .icon-glass              { background-position: 0      0; }
